@@ -81,12 +81,18 @@ class ReviewRequestsAdmin extends IndexAdmin
             }
         }
 
+        if ($this->design->getVar('backfill_period') === null) {
+            $this->design->assign('backfill_period', $this->backfillPeriod());
+        }
         $this->design->assign('rr_backfill_count', (int) ($_SESSION['sviat__review_requests__backfill_count'] ?? 0));
         unset($_SESSION['sviat__review_requests__backfill_count']);
         $this->design->assign('rr', $this->settingsView($moduleSettings));
         $this->design->assign('rr_statuses', $entityFactory->get(OrderStatusEntity::class)->find());
         $this->design->assign('rr_stats', $this->stats($queryFactory));
-        $this->design->assign('rr_log', $this->log($queryFactory));
+        $logStatus = $this->logStatusFilter();
+        $this->design->assign('rr_log_status', $logStatus);
+        $this->design->assign('rr_log', $this->log($queryFactory, $logStatus));
+        $this->design->assign('rr_sent_today', $queue->sentSince((new DateTimeImmutable())->setTime(0, 0)));
         $this->design->assign('rr_server_time', (new DateTimeImmutable())->format('d.m.Y H:i'));
         $this->design->assign('rr_in_window', (new ReviewRequestRules($moduleSettings))->inSendWindow(new DateTimeImmutable()));
 
@@ -256,16 +262,32 @@ class ReviewRequestsAdmin extends IndexAdmin
              FROM __sviat__review_request_items WHERE comment_id IS NOT NULL'
         )->bindValues(['since' => $since])->results();
 
+        $sent = (int) ($recent[0]->sent ?? 0);
+        $visited = (int) ($recent[0]->visited ?? 0);
+        $reviewed = (int) ($reviews[0]->recent ?? 0);
+
         return [
             'by_status' => $byStatus,
-            'sent_30' => (int) ($recent[0]->sent ?? 0),
-            'visited_30' => (int) ($recent[0]->visited ?? 0),
-            'reviews_30' => (int) ($reviews[0]->recent ?? 0),
+            'sent_30' => $sent,
+            'visited_30' => $visited,
+            'reviews_30' => $reviewed,
             'reviews_total' => (int) ($reviews[0]->total ?? 0),
+            'baseline_formatted' => number_format((int) ($byStatus[ReviewRequestsEntity::STATUS_BASELINE] ?? 0), 0, '', ' '),
+            'open_pct' => $sent > 0 ? (int) round($visited * 100 / $sent) : 0,
+            'review_pct' => $visited > 0 ? (int) round($reviewed * 100 / $visited) : 0,
         ];
     }
 
-    private function log(QueryFactory $queryFactory): array
+    /** Фільтр журналу з адреси: лише відомий стан, baseline у журнал не потрапляє. */
+    private function logStatusFilter(): ?string
+    {
+        $status = $this->request->get('log_status');
+
+        return is_string($status) && $status !== ReviewRequestsEntity::STATUS_BASELINE
+            && in_array($status, ReviewRequestsEntity::STATUSES, true) ? $status : null;
+    }
+
+    private function log(QueryFactory $queryFactory, ?string $status): array
     {
         $rows = $queryFactory->newSqlQuery()->setStatement(
             'SELECT rr.*, o.email, o.date AS order_date,
@@ -278,7 +300,7 @@ class ReviewRequestsAdmin extends IndexAdmin
         )->bindValues([
             // IN за індексом status, а не «<> baseline»: інакше запит іде всією
             // таблицею, де майже все — baseline.
-            'statuses' => array_values(array_diff(ReviewRequestsEntity::STATUSES, [ReviewRequestsEntity::STATUS_BASELINE])),
+            'statuses' => $status !== null ? [$status] : array_values(array_diff(ReviewRequestsEntity::STATUSES, [ReviewRequestsEntity::STATUS_BASELINE])),
         ])->results();
 
         foreach ($rows as $row) {
