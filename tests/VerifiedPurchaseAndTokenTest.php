@@ -61,11 +61,26 @@ class VerifiedPurchaseAndTokenTest extends TestCase
         }
     }
 
-    /** Журнал бачить менеджер: навіть коротка адреса не має лишитись цілою. */
+    /** Менеджер без права на замовлення: навіть коротка адреса не має лишитись цілою. */
     public function testMaskEmailHidesShortAddressesToo(): void
     {
         $this->assertSame('bu***@example.com', \Okay\Modules\Sviat\ReviewRequests\Backend\Controllers\ReviewRequestsAdmin::maskEmail('buyer@example.com'));
         $this->assertSame('a*@x.com', \Okay\Modules\Sviat\ReviewRequests\Backend\Controllers\ReviewRequestsAdmin::maskEmail('ab@x.com'));
         $this->assertSame('a**@x.com', \Okay\Modules\Sviat\ReviewRequests\Backend\Controllers\ReviewRequestsAdmin::maskEmail('abc@x.com'));
+    }
+
+    /**
+     * Повну адресу показуємо лише тому, хто й так бачить її в замовленнях.
+     * Право модуля саме по собі адрес покупців не відкриває.
+     */
+    public function testFullEmailsOnlyForManagersWhoSeeOrders(): void
+    {
+        $admin = \Okay\Modules\Sviat\ReviewRequests\Backend\Controllers\ReviewRequestsAdmin::class;
+        $managers = (new \ReflectionClass(\Okay\Core\Managers::class))->newInstanceWithoutConstructor();
+
+        $this->assertTrue($admin::showsFullEmails($managers, (object) ['permissions' => ['orders', 'sviat__review_requests']]));
+        $this->assertFalse($admin::showsFullEmails($managers, (object) ['permissions' => ['sviat__review_requests']]));
+        $this->assertFalse($admin::showsFullEmails($managers, (object) ['permissions' => null]));
+        $this->assertFalse($admin::showsFullEmails($managers, null));
     }
 }

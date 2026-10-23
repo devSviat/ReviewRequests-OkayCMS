@@ -390,7 +390,7 @@
                                     {$rr_key = "sviat__review_requests__status_`$row->status`"}
                                     <tr>
                                         <td><a href="{url controller=OrderAdmin id=$row->order_id return=null active_tab=null log_status=null}">#{$row->order_id}</a></td>
-                                        <td>{$row->email_masked|escape}</td>
+                                        <td>{$row->email_shown|escape}</td>
                                         <td>
                                             <span class="rr-badge rr-badge--{$row->status|escape}">{$btr->getTranslation($rr_key)|escape}</span>
                                             {if $row->skip_reason}{$rr_key = "sviat__review_requests__reason_`$row->skip_reason`"}<div class="rr-reason">{$btr->getTranslation($rr_key)|escape}</div>{/if}

@@ -96,6 +96,24 @@ class Init extends AbstractInit
         ))->baseline(new DateTimeImmutable());
     }
 
+    /**
+     * Замовлення без email більше не потрапляють у журнал (ReviewRequestQueue::detect()),
+     * тож прибираємо вже записані. Лише без позицій: такий запит створено при
+     * виявленні, і листа за ним не було. Пропуск при відправці, коли адресу
+     * стерли вже після постановки в чергу, лишається в журналі.
+     */
+    public function update_1_0_3(): void
+    {
+        ServiceLocator::getInstance()->getService(QueryFactory::class)->newSqlQuery()->setStatement(
+            'DELETE rr FROM __sviat__review_requests rr
+             WHERE rr.status = :skipped AND rr.skip_reason = :reason
+               AND NOT EXISTS (SELECT 1 FROM __sviat__review_request_items i WHERE i.request_id = rr.id)'
+        )->bindValues([
+            'skipped' => ReviewRequestsEntity::STATUS_SKIPPED,
+            'reason' => 'no_email',
+        ])->execute();
+    }
+
     /** @return array<string, true> таблиці БД у вигляді Entity::getTable(), тобто з «__» замість префікса */
     private function existingTables(): array
     {

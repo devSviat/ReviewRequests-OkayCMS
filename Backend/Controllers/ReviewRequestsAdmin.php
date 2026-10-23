@@ -5,6 +5,7 @@ namespace Okay\Modules\Sviat\ReviewRequests\Backend\Controllers;
 use DateTimeImmutable;
 use Okay\Admin\Controllers\IndexAdmin;
 use Okay\Core\EntityFactory;
+use Okay\Core\Managers;
 use Okay\Core\QueryFactory;
 use Psr\Log\LoggerInterface;
 use Okay\Core\Security\AttemptLimiter;
@@ -303,15 +304,25 @@ class ReviewRequestsAdmin extends IndexAdmin
             'statuses' => $status !== null ? [$status] : array_values(array_diff(ReviewRequestsEntity::STATUSES, [ReviewRequestsEntity::STATUS_BASELINE])),
         ])->results();
 
+        $fullEmails = self::showsFullEmails($this->managers, !empty($this->manager) ? $this->manager : null);
         foreach ($rows as $row) {
-            $row->email_masked = self::maskEmail((string) $row->email);
+            $row->email_shown = $fullEmails ? (string) $row->email : self::maskEmail((string) $row->email);
             unset($row->email, $row->token_hash, $row->unsubscribe_hash, $row->email_hash);
         }
 
         return $rows;
     }
 
-    /** Журнал бачить менеджер із правом модуля, але адреса покупця тут не потрібна повністю. */
+    /**
+     * Повна адреса — лише тому, хто й так бачить її в замовленнях. Право модуля
+     * без права на замовлення не повинно відкривати адреси всіх покупців.
+     */
+    public static function showsFullEmails(Managers $managers, ?object $manager): bool
+    {
+        return $manager !== null && $managers->access('orders', $manager);
+    }
+
+    /** Адреса для лога й для менеджера без права на замовлення. */
     public static function maskEmail(string $email): string
     {
         if (!str_contains($email, '@')) {

@@ -110,6 +110,8 @@ class ReviewRequestQueue
 
         // Старші за граничний вік однаково були б пропущені як too_old, а межа за
         // датою не дає запиту проходити всю історію виконаних замовлень щопрогону.
+        // Без email замовлення не записуємо зовсім: у журналі це лише шум. Якщо
+        // адресу допишуть пізніше, замовлення стане в чергу на наступному прогоні.
         $maxAge = max(1, $this->settings->int('max_order_age_days'));
         $orders = $this->queryFactory->newSqlQuery()->setStatement(
             'SELECT o.id, o.email, o.lang_id, o.date
@@ -117,6 +119,7 @@ class ReviewRequestQueue
              LEFT JOIN __sviat__review_requests rr ON rr.order_id = o.id
              WHERE rr.id IS NULL AND o.status_id IN (' . $this->intList($statuses) . ')
                AND o.date >= :since
+               AND TRIM(o.email) <> \'\'
              ORDER BY o.id
              LIMIT ' . self::DETECT_BATCH
         )->bindValue('since', $now->modify("-{$maxAge} days")->format(self::DATETIME))->results();
