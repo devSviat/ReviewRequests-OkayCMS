@@ -6,7 +6,7 @@ name: Release
 # після мерджу CI лише ставить тег на те, що вже у файлі. Тому CI нічого не
 # пише в захищену гілку.
 #
-# Модуль лише для форку OkayCMS (devSviat/OkayCMS): відгук з оцінкою 1–5,
+# Модуль лише для форку OkayCMS (devSviat/OkayCMS-Fork): відгук з оцінкою 1–5,
 # RatingHelper, CustomerCsrfToken, FormToken і AttemptLimiter є тільки там.
 # Тож один реліз v<X.Y.Z> і одна ціль перевірки — форк.
 
@@ -58,7 +58,7 @@ jobs:
       matrix:
         include:
           - target: fork
-            repo: devSviat/OkayCMS
+            repo: devSviat/OkayCMS-Fork
             ref: main
             php: '8.5'
     steps:
