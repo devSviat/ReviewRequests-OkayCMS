@@ -96,6 +96,25 @@ class Init extends AbstractInit
         ))->baseline(new DateTimeImmutable());
     }
 
+    /**
+     * Замовлення без email більше не потрапляють у журнал (ReviewRequestQueue::HAS_EMAIL),
+     * тож прибираємо вже записані — лише ті, що пропущені при виявленні: у них
+     * немає хеша адреси й жодної спроби. Пропуск при відправці, коли адресу
+     * стерли вже після постановки в чергу, зберігає хеш (ReviewRequestCron) і
+     * лишається в журналі разом з історією спроб.
+     */
+    public function update_1_0_3(): void
+    {
+        ServiceLocator::getInstance()->getService(QueryFactory::class)->newSqlQuery()->setStatement(
+            'DELETE FROM __sviat__review_requests
+             WHERE status = :skipped AND skip_reason = :reason
+               AND email_hash IS NULL AND attempts = 0'
+        )->bindValues([
+            'skipped' => ReviewRequestsEntity::STATUS_SKIPPED,
+            'reason' => 'no_email',
+        ])->execute();
+    }
+
     /** @return array<string, true> таблиці БД у вигляді Entity::getTable(), тобто з «__» замість префікса */
     private function existingTables(): array
     {

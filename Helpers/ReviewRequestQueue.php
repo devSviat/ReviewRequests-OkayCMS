@@ -26,6 +26,14 @@ class ReviewRequestQueue
     /** Скільки нових виконаних замовлень виявляти за один прогін. */
     public const DETECT_BATCH = 500;
 
+    /**
+     * Замовлення без адреси не записуються ні в чергу, ні в базову лінію: у
+     * журналі це лише шум. Якщо адресу допишуть пізніше, замовлення виявиться
+     * на наступному прогоні. Ознака — «@», а не непорожній рядок: «0», «-» чи
+     * таб у полі — теж не адреса.
+     */
+    public const HAS_EMAIL = "LOCATE('@', o.email) > 0";
+
     /** Невдала відправка лишає запит у черзі до стількох спроб. */
     public const MAX_ATTEMPTS = 3;
 
@@ -74,7 +82,8 @@ class ReviewRequestQueue
             'INSERT IGNORE INTO __sviat__review_requests (order_id, status, skip_reason, lang_id, detected_at, attempts)
              SELECT o.id, :status, NULL, o.lang_id, :now, 0
              FROM __orders o
-             WHERE o.status_id IN (' . $this->intList($statuses) . ')'
+             WHERE o.status_id IN (' . $this->intList($statuses) . ')
+               AND ' . self::HAS_EMAIL
         )->bindValues([
             'status' => ReviewRequestsEntity::STATUS_BASELINE,
             'now' => $now->format(self::DATETIME),
@@ -117,6 +126,7 @@ class ReviewRequestQueue
              LEFT JOIN __sviat__review_requests rr ON rr.order_id = o.id
              WHERE rr.id IS NULL AND o.status_id IN (' . $this->intList($statuses) . ')
                AND o.date >= :since
+               AND ' . self::HAS_EMAIL . '
              ORDER BY o.id
              LIMIT ' . self::DETECT_BATCH
         )->bindValue('since', $now->modify("-{$maxAge} days")->format(self::DATETIME))->results();
