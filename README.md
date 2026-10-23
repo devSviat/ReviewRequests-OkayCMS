@@ -1,6 +1,6 @@
 # Модуль Review Requests для OkayCMS
 
-> **Лише для [форку OkayCMS](https://github.com/devSviat/OkayCMS).** Модуль
+> **Лише для [форку OkayCMS](https://github.com/devSviat/OkayCMS-Fork).** Модуль
 > спирається на те, чого в стоковій OkayCMS 4.5.3 немає: оцінку 1–5 у відгуку й
 > рейтинг товару з відгуків (`RatingHelper`), а також механізми безпеки ядра
 > форку (`CustomerCsrfToken`, `FormToken`, `AttemptLimiter`, перевірку origin).
@@ -98,7 +98,7 @@
 ## Вимоги
 
 - PHP 8.4+
-- [Форк OkayCMS](https://github.com/devSviat/OkayCMS)
+- [Форк OkayCMS](https://github.com/devSviat/OkayCMS-Fork)
 - Планувальник OkayCMS у cron (див. нижче)
 - Перевірено на PHP 8.5
 
