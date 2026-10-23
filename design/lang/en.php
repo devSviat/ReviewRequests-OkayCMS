@@ -1,0 +1,35 @@
+<?php
+
+$lang['sviat__review_requests__page_title'] = 'Rate your purchases';
+$lang['sviat__review_requests__intro'] = 'Thank you for your purchase! Tell us what you think: your review helps other customers choose.';
+$lang['sviat__review_requests__link_invalid'] = 'This link is invalid or has expired. You can still leave a review on the product page.';
+$lang['sviat__review_requests__nothing_to_review'] = 'There is nothing left to review. Thank you!';
+$lang['sviat__review_requests__saved'] = 'Thank you! Your review is saved and will be published after moderation.';
+$lang['sviat__review_requests__already_reviewed'] = 'You have already reviewed this product. Thank you!';
+$lang['sviat__review_requests__rating'] = 'Rating';
+$lang['sviat__review_requests__name'] = 'Your name';
+$lang['sviat__review_requests__text'] = 'Your review';
+$lang['sviat__review_requests__submit'] = 'Send review';
+$lang['sviat__review_requests__moderation_note'] = 'Reviews are published after moderation. If you are signed in to the account with this order, your review is marked "Verified purchase".';
+$lang['sviat__review_requests__error_name'] = 'Please enter your name';
+$lang['sviat__review_requests__error_rating'] = 'Please choose a rating from 1 to 5';
+$lang['sviat__review_requests__error_text'] = 'Please write a few words about the product';
+$lang['sviat__review_requests__error_not_saved'] = 'The review could not be saved. Please try again.';
+$lang['sviat__review_requests__verified'] = 'Verified purchase';
+$lang['sviat__review_requests__verified_hint'] = 'The author bought this product in our store';
+$lang['sviat__review_requests__unsubscribe_title'] = 'Unsubscribe';
+$lang['sviat__review_requests__unsubscribe_text'] = 'Stop sending you emails asking to rate a purchase? Order emails are not affected.';
+$lang['sviat__review_requests__unsubscribe_button'] = 'Stop sending';
+$lang['sviat__review_requests__unsubscribe_done'] = 'Done. We will not send you emails asking to rate a purchase anymore.';
+$lang['sviat__review_requests__email_subject'] = 'How do you like your purchase?';
+$lang['sviat__review_requests__email_hello'] = 'Hello';
+$lang['sviat__review_requests__email_text'] = 'Thank you for choosing us! We would appreciate it if you rated the products from your order: it takes a minute and helps other customers.';
+$lang['sviat__review_requests__email_button'] = 'Rate products';
+$lang['sviat__review_requests__email_why'] = 'You received this email because you recently placed an order with us. We send it once, without reminders.';
+$lang['sviat__review_requests__email_unsubscribe_note'] = 'Do not want such emails?';
+$lang['sviat__review_requests__email_unsubscribe_link'] = 'Unsubscribe';
+$lang['sviat__review_requests__pref_title'] = 'Review requests';
+$lang['sviat__review_requests__pref_label'] = 'Email me a request to rate the products after a completed order';
+$lang['sviat__review_requests__pref_save'] = 'Save';
+$lang['sviat__review_requests__pref_saved'] = 'Saved.';
+$lang['sviat__review_requests__pref_locked'] = 'You turned these emails off with the link in an email. To get them again, contact us.';

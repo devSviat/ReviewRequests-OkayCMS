@@ -1,0 +1,31 @@
+{
+  "Okay": "4.5.3",
+  "version": "1.0.0",
+  "moduleName": "Прохання про відгук після покупки",
+  "vendor": {
+    "email": "devsviat@proton.me",
+    "site": "https://github.com/devSviat"
+  },
+  "modifications": {
+    "front": [
+      {
+        "file": "product.tpl",
+        "changes": [
+          {
+            "find": "class=\"comment__name\"",
+            "appendAfter": "{if !empty($comment->sviat__verified_purchase)}<span class=\"comment__verified\" style=\"display:inline-flex;align-items:center;margin-left:10px;font-size:13px;color:#00a046;\" title=\"{$lang->sviat__review_requests__verified_hint|escape}\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"margin-right:4px;flex:none;\"><path d=\"M4 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M11.5 17h-5.5v-14h-2\"/><path d=\"M6 5l14 1l-1 7h-13\"/><path d=\"M15 19l2 2l4 -4\"/></svg>{$lang->sviat__review_requests__verified|escape}</span>{/if}"
+          }
+        ]
+      },
+      {
+        "file": "user.tpl",
+        "changes": [
+          {
+            "find": "fn_validate_register",
+            "appendAfter": "{sviat_review_requests_preferences user=$user}"
+          }
+        ]
+      }
+    ]
+  }
+}
