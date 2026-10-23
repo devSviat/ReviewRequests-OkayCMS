@@ -4,10 +4,10 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 12px;
-    margin: 8px 0 16px;
+    margin: 20px 0 16px;
 }
 .rr-head .heading_page {
-    margin-bottom: 0;
+    margin: 0;
 }
 .rr-pill {
     display: inline-flex;
