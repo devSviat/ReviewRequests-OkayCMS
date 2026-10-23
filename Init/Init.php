@@ -97,17 +97,18 @@ class Init extends AbstractInit
     }
 
     /**
-     * Замовлення без email більше не потрапляють у журнал (ReviewRequestQueue::detect()),
-     * тож прибираємо вже записані. Лише без позицій: такий запит створено при
-     * виявленні, і листа за ним не було. Пропуск при відправці, коли адресу
-     * стерли вже після постановки в чергу, лишається в журналі.
+     * Замовлення без email більше не потрапляють у журнал (ReviewRequestQueue::HAS_EMAIL),
+     * тож прибираємо вже записані — лише ті, що пропущені при виявленні: у них
+     * немає хеша адреси й жодної спроби. Пропуск при відправці, коли адресу
+     * стерли вже після постановки в чергу, зберігає хеш (ReviewRequestCron) і
+     * лишається в журналі разом з історією спроб.
      */
     public function update_1_0_3(): void
     {
         ServiceLocator::getInstance()->getService(QueryFactory::class)->newSqlQuery()->setStatement(
-            'DELETE rr FROM __sviat__review_requests rr
-             WHERE rr.status = :skipped AND rr.skip_reason = :reason
-               AND NOT EXISTS (SELECT 1 FROM __sviat__review_request_items i WHERE i.request_id = rr.id)'
+            'DELETE FROM __sviat__review_requests
+             WHERE status = :skipped AND skip_reason = :reason
+               AND email_hash IS NULL AND attempts = 0'
         )->bindValues([
             'skipped' => ReviewRequestsEntity::STATUS_SKIPPED,
             'reason' => 'no_email',

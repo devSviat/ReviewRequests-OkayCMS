@@ -80,7 +80,22 @@ class VerifiedPurchaseAndTokenTest extends TestCase
 
         $this->assertTrue($admin::showsFullEmails($managers, (object) ['permissions' => ['orders', 'sviat__review_requests']]));
         $this->assertFalse($admin::showsFullEmails($managers, (object) ['permissions' => ['sviat__review_requests']]));
-        $this->assertFalse($admin::showsFullEmails($managers, (object) ['permissions' => null]));
         $this->assertFalse($admin::showsFullEmails($managers, null));
+    }
+
+    /** Те, що йде в шаблон: адреса повна або маска, а сирої адреси, хешів і токенів немає. */
+    public function testJournalRowsCarryOnlyTheShownAddress(): void
+    {
+        $admin = \Okay\Modules\Sviat\ReviewRequests\Backend\Controllers\ReviewRequestsAdmin::class;
+        $row = fn() => (object) ['email' => 'buyer@example.com', 'token_hash' => 't', 'unsubscribe_hash' => 'u', 'email_hash' => 'h', 'status' => 'sent'];
+
+        [$full] = $admin::journalRows([$row()], true);
+        [$masked] = $admin::journalRows([$row()], false);
+
+        $this->assertSame('buyer@example.com', $full->email_shown);
+        $this->assertSame('bu***@example.com', $masked->email_shown);
+        foreach ([$full, $masked] as $shown) {
+            $this->assertSame(['status', 'email_shown'], array_keys(get_object_vars($shown)));
+        }
     }
 }

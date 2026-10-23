@@ -304,7 +304,18 @@ class ReviewRequestsAdmin extends IndexAdmin
             'statuses' => $status !== null ? [$status] : array_values(array_diff(ReviewRequestsEntity::STATUSES, [ReviewRequestsEntity::STATUS_BASELINE])),
         ])->results();
 
-        $fullEmails = self::showsFullEmails($this->managers, !empty($this->manager) ? $this->manager : null);
+        return self::journalRows($rows, self::showsFullEmails($this->managers, !empty($this->manager) ? $this->manager : null));
+    }
+
+    /**
+     * Рядки журналу для шаблону: адреса — повна або маска, а сирої адреси,
+     * хешів і токенів у рядку не лишається.
+     *
+     * @param object[] $rows
+     * @return object[]
+     */
+    public static function journalRows(array $rows, bool $fullEmails): array
+    {
         foreach ($rows as $row) {
             $row->email_shown = $fullEmails ? (string) $row->email : self::maskEmail((string) $row->email);
             unset($row->email, $row->token_hash, $row->unsubscribe_hash, $row->email_hash);
