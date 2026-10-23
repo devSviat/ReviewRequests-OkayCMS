@@ -6,7 +6,7 @@ use DateTimeImmutable;
 use Okay\Admin\Controllers\IndexAdmin;
 use Okay\Core\EntityFactory;
 use Okay\Core\QueryFactory;
-use Okay\Core\Request;
+use Psr\Log\LoggerInterface;
 use Okay\Core\Security\AttemptLimiter;
 use Okay\Entities\OrderStatusEntity;
 use Okay\Modules\Sviat\ReviewRequests\Entities\ReviewRequestsEntity;
@@ -40,7 +40,8 @@ class ReviewRequestsAdmin extends IndexAdmin
         EntityFactory $entityFactory,
         QueryFactory $queryFactory,
         ReviewRequestPreferences $preferences,
-        AttemptLimiter $attemptLimiter
+        AttemptLimiter $attemptLimiter,
+        LoggerInterface $logger
     ) {
         if ($this->request->method('post')) {
             switch ($this->request->post('action')) {
@@ -58,9 +59,14 @@ class ReviewRequestsAdmin extends IndexAdmin
                     break;
                 case 'optout_remove':
                     $email = ReviewRequestRules::normalizeEmail($this->request->post('optout_email'));
-                    $email !== null && $preferences->removeOptOut($email)
-                        ? $this->postRedirectGet->storeMessageSuccess('optout_removed')
-                        : $this->postRedirectGet->storeMessageError('optout_not_found');
+                    if ($email !== null && $preferences->removeOptOut($email)) {
+                        // Відмову скасовує людина, не покупець: слід у лозі, хто й кого повернув.
+                        $logger->info('ReviewRequests: менеджер ' . (string) ($this->manager->login ?? '?')
+                            . ' повернув до листів адресу ' . self::maskEmail($email));
+                        $this->postRedirectGet->storeMessageSuccess('optout_removed');
+                    } else {
+                        $this->postRedirectGet->storeMessageError('optout_not_found');
+                    }
                     $this->postRedirectGet->redirect();
                     break;
                 case 'backfill_preview':
@@ -94,7 +100,9 @@ class ReviewRequestsAdmin extends IndexAdmin
             ? ReviewRequestSettings::MODE_LIVE
             : ReviewRequestSettings::MODE_TEST);
 
-        $statuses = array_values(array_unique(array_filter(array_map('intval', (array) $this->request->post('statuses')))));
+        // Лише скаляри: intval(['4']) дає 1, і statuses[][]=4 зберіг би статус 1.
+        $posted = array_filter((array) $this->request->post('statuses'), 'is_scalar');
+        $statuses = array_values(array_unique(array_filter(array_map('intval', $posted))));
         sort($statuses);
         $current = $settings->completedStatuses();
         sort($current);
@@ -102,12 +110,14 @@ class ReviewRequestsAdmin extends IndexAdmin
             // Замовлення, що вже стоять у доданому статусі, — історія, а не нові
             // виконані: вони йдуть у baseline. Спершу добираємо нове під старими
             // статусами, щоб baseline не забрав справжні нові замовлення.
+            // Baseline нових статусів — до збереження: інакше прогін планувальника
+            // між збереженням і baseline() прийняв би їхню історію за нові.
             $now = new DateTimeImmutable();
             if ($queue->hasBaseline()) {
                 $queue->detect($now);
             }
+            $queue->baseline($now, $statuses);
             $settings->set('statuses', implode(',', $statuses));
-            $queue->baseline($now);
         }
 
         foreach (self::LIMITS as $name => [$min, $max]) {
@@ -119,14 +129,17 @@ class ReviewRequestsAdmin extends IndexAdmin
 
         $settings->set('one_click', $this->request->post('one_click') ? 1 : 0);
 
-        $settings->set('excluded', mb_substr(trim((string) $this->request->post('excluded')), 0, 5000));
+        $settings->set('excluded', mb_substr(trim($this->postString('excluded')), 0, 5000));
 
-        $rootUrl = rtrim(trim((string) $this->request->post('root_url')), '/');
+        $rootUrl = rtrim(trim($this->postString('root_url')), '/');
         if ($rootUrl === '') {
             $settings->set('root_url', '');
             return null;
         }
-        if (!preg_match('~^https?://[^/\s]+$~i', $rootUrl) || !$this->isShopHost((string) parse_url($rootUrl, PHP_URL_HOST))) {
+        if (!ReviewRequestSettings::isBaseUrl($rootUrl)) {
+            return 'root_url_foreign';
+        }
+        if (!$this->mayUseRootUrl((string) parse_url($rootUrl, PHP_URL_HOST))) {
             return 'root_url_foreign';
         }
         $settings->set('root_url', $rootUrl);
@@ -137,16 +150,18 @@ class ReviewRequestsAdmin extends IndexAdmin
     /**
      * Адреса в листах — лише домен самого магазину: інакше менеджер із правом
      * лише на цей модуль відправив би покупців із дійсними токенами на чужий
-     * сайт. Домен беремо з налаштувань оновлення ядра (їх змінює адміністратор
-     * налаштувань); Host запиту — лише коли їх немає, бо його можна підробити.
+     * сайт. Домен беремо з налаштувань оновлення ядра. Коли їх немає, довіряти
+     * нічому з запиту не можна (Host підробляється), тож адресу задає лише той,
+     * хто має право на налаштування сайту.
      */
-    private function isShopHost(string $host): bool
+    private function mayUseRootUrl(string $host): bool
     {
         $coreRoot = (string) $this->settings->get('core_updater__root_url');
-        $shopHost = $coreRoot !== '' ? (string) parse_url($coreRoot, PHP_URL_HOST) : Request::getDomain();
-        $shopHost = preg_replace('~:\d+$~', '', strtolower($shopHost));
+        if ($coreRoot === '') {
+            return !empty($this->manager) && $this->managers->access('settings', $this->manager);
+        }
 
-        return $host !== '' && $shopHost !== '' && strtolower($host) === $shopHost;
+        return $host !== '' && strtolower($host) === strtolower((string) parse_url($coreRoot, PHP_URL_HOST));
     }
 
     /**
@@ -181,11 +196,19 @@ class ReviewRequestsAdmin extends IndexAdmin
         return [false, 'test_no_orders'];
     }
 
+    /** Поле форми як рядок; масив (field[]=…) — порожній рядок, а не «Array». */
+    private function postString(string $name): string
+    {
+        $value = $this->request->post($name);
+
+        return is_string($value) ? $value : '';
+    }
+
     /** @return array{0: string, 1: string} */
     private function backfillPeriod(): array
     {
-        $from = (string) $this->request->post('date_from');
-        $to = (string) $this->request->post('date_to');
+        $from = $this->postString('date_from');
+        $to = $this->postString('date_to');
         // Лише справжня дата: «2026-13-45» пройшла б regex і поклала б сторінку на new DateTimeImmutable().
         $valid = function (string $d): bool {
             $date = DateTimeImmutable::createFromFormat('!Y-m-d', $d);

@@ -3,8 +3,10 @@
 namespace Okay\Modules\Sviat\ReviewRequests\Helpers;
 
 use DateTimeImmutable;
+use Okay\Core\Database;
 use Okay\Core\EntityFactory;
 use Okay\Core\QueryFactory;
+use Okay\Core\ServiceLocator;
 use Okay\Entities\ImagesEntity;
 use Okay\Entities\OrdersEntity;
 use Okay\Entities\ProductsEntity;
@@ -58,11 +60,12 @@ class ReviewRequestQueue
      *
      * @return int скільки замовлень записано
      */
-    public function baseline(DateTimeImmutable $now): int
+    /** @param int[]|null $statuses типово — збережені; при зміні налаштування — нові, ще до збереження */
+    public function baseline(DateTimeImmutable $now, ?array $statuses = null): int
     {
         $this->settings->set('baseline_at', $now->format(self::DATETIME));
 
-        $statuses = $this->settings->completedStatuses();
+        $statuses = $statuses ?? $this->settings->completedStatuses();
         if ($statuses === []) {
             return 0;
         }
@@ -260,8 +263,8 @@ class ReviewRequestQueue
     {
         /** @var ReviewRequestItemsEntity $items */
         $items = $this->entityFactory->get(ReviewRequestItemsEntity::class);
-        // Попередня спроба могла обірватися між вставкою позицій і markSent.
-        // Запит ще не надіслано, тож відгуків на ці позиції бути не може.
+        // Невдала спроба, обірвана до markFailed(), могла лишити позиції. Лист
+        // тоді не пішов, тож відгуків на них бути не може.
         $items->deleteByRequest($requestId);
         foreach ($purchases as $purchase) {
             $items->add([
@@ -278,19 +281,35 @@ class ReviewRequestQueue
         $this->entityFactory->get(ReviewRequestsEntity::class)->update($requestId, ['email_hash' => $emailHash]);
     }
 
-    public function markSent(int $requestId, string $tokenHash, string $unsubscribeHash, DateTimeImmutable $now): void
+    /**
+     * Атомарно «займає» запит: pending → sent. Два прогони планувальника, що
+     * перекрились (scheduler:run -f, гонка блокування), інакше надіслали б по
+     * листу кожен, а другий токен затер би перший.
+     *
+     * @return bool false — запит уже не в черзі, слати не можна
+     */
+    public function markSent(int $requestId, string $tokenHash, string $unsubscribeHash, DateTimeImmutable $now): bool
     {
         $ttl = max(1, $this->settings->int('token_ttl_days'));
-        $this->entityFactory->get(ReviewRequestsEntity::class)->update($requestId, [
-            'status' => ReviewRequestsEntity::STATUS_SENT,
-            'skip_reason' => null,
-            'sent_at' => $now->format(self::DATETIME),
-            'token_hash' => $tokenHash,
-            'unsubscribe_hash' => $unsubscribeHash,
-            'token_expires_at' => $now->modify("+{$ttl} days")->format(self::DATETIME),
-            'error_text' => null,
-            'retry_at' => null,
-        ]);
+        $update = $this->queryFactory->newUpdate()
+            ->table(ReviewRequestsEntity::getTable())
+            ->cols([
+                'status' => ReviewRequestsEntity::STATUS_SENT,
+                'skip_reason' => null,
+                'sent_at' => $now->format(self::DATETIME),
+                'token_hash' => $tokenHash,
+                'unsubscribe_hash' => $unsubscribeHash,
+                'token_expires_at' => $now->modify("+{$ttl} days")->format(self::DATETIME),
+                'error_text' => null,
+                'retry_at' => null,
+            ])
+            ->where('id = :id AND status = :pending')
+            ->bindValues(['id' => $requestId, 'pending' => ReviewRequestsEntity::STATUS_PENDING]);
+
+        $db = ServiceLocator::getInstance()->getService(Database::class);
+        $db->query($update);
+
+        return (int) $db->affectedRows() === 1;
     }
 
     public function markFailed(object $request, string $error, DateTimeImmutable $now): void

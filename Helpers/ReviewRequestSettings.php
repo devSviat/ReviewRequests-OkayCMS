@@ -85,7 +85,17 @@ class ReviewRequestSettings
             $url = rtrim((string) $this->settings->get('core_updater__root_url'), '/');
         }
 
-        return preg_match('~^https?://[^/\s]+$~i', $url) ? $url : '';
+        return self::isBaseUrl($url) ? $url : '';
+    }
+
+    /**
+     * Лише scheme://host[:port]. Без «\», «@», «?», «#», «%»: PHP і браузер
+     * розбирають їх по-різному — «https://evil.com\@shop.com» для parse_url()
+     * має хост shop.com, а браузер іде на evil.com.
+     */
+    public static function isBaseUrl(string $url): bool
+    {
+        return (bool) preg_match('~^https?://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\d{1,5})?$~i', $url);
     }
 
     /** @return string[] адреси й домени в нижньому регістрі */

@@ -122,7 +122,11 @@ class ReviewRequestReviews
         /** @var CommentsEntity $comments */
         $comments = $this->entityFactory->get(CommentsEntity::class);
         $commentId = (int) $comments->add($comment);
-        if ($commentId < 1) {
+        // Database ковтає помилку INSERT, а insertId() тоді віддає id попереднього
+        // запису з'єднання: прив'язали б позицію до чужого відгуку.
+        $saved = $commentId > 0 ? $comments->findOne(['id' => $commentId]) : null;
+        if (!is_object($saved) || (int) $saved->object_id !== (int) $item->product_id || (string) $saved->type !== 'product'
+            || (string) $saved->email !== $comment['email']) {
             $this->release((int) $item->id);
             return null;
         }
@@ -133,7 +137,13 @@ class ReviewRequestReviews
             ServiceLocator::getInstance()->getService(RatingHelper::class)
                 ->recalculateFromReviews($this->entityFactory->get(ProductsEntity::class), (int) $item->product_id, 'product');
         }
-        ServiceLocator::getInstance()->getService(Notify::class)->emailCommentAdmin($commentId);
+        try {
+            ServiceLocator::getInstance()->getService(Notify::class)->emailCommentAdmin($commentId);
+        } catch (\Throwable $e) {
+            // Відгук уже збережено: збій листа адміну не має дати покупцю помилку.
+            ServiceLocator::getInstance()->getService(\Psr\Log\LoggerInterface::class)
+                ->warning('ReviewRequests: лист адміну про відгук ' . $commentId . ' не надіслано: ' . $e->getMessage());
+        }
 
         return ExtenderFacade::execute(__METHOD__, $commentId, func_get_args());
     }

@@ -18,6 +18,10 @@ class ReviewRequestCron
     /** Скільки запитів черги розглядати за прогін: з запасом над добовим лімітом. */
     private const REVIEW_BATCH = 200;
 
+    private const SENT = 'sent';
+    private const FAILED = 'failed';
+    private const TAKEN = 'taken';
+
     private ReviewRequestQueue $queue;
     private ReviewRequestRules $rules;
     private ReviewRequestMailer $mailer;
@@ -95,10 +99,11 @@ class ReviewRequestCron
                 continue;
             }
 
-            if ($this->sendOne($request, $order, $purchases, $now)) {
+            $result = $this->sendOne($request, $order, $purchases, $now);
+            if ($result === self::SENT) {
                 $stats['sent']++;
                 $sentToday++;
-            } else {
+            } elseif ($result === self::FAILED) {
                 $stats['failed']++;
                 // Збій пошти спільний для всіх листів: решту не пробуємо до наступного прогону.
                 $canSend = false;
@@ -108,18 +113,23 @@ class ReviewRequestCron
         return ExtenderFacade::execute(__METHOD__, $stats, func_get_args());
     }
 
-    /** @param object[] $purchases */
-    private function sendOne(object $request, object $order, array $purchases, DateTimeImmutable $now): bool
+    /**
+     * @param object[] $purchases
+     * @return string SENT, FAILED або TAKEN — запит уже забрав інший прогін
+     */
+    private function sendOne(object $request, object $order, array $purchases, DateTimeImmutable $now): string
     {
         $email = ReviewRequestRules::normalizeEmail($order->email);
         $token = ReviewRequestToken::generate();
         $unsubscribeToken = ReviewRequestToken::generate();
 
-        $this->queue->storeItems((int) $request->id, $purchases);
         // Запит позначається надісланим до відправки: якщо процес обірветься
         // після листа, наступний прогін не надішле його вдруге. Ціна — лист,
         // який міг і не піти, замість повторного листа покупцю.
-        $this->queue->markSent((int) $request->id, ReviewRequestToken::hash($token), ReviewRequestToken::hash($unsubscribeToken), $now);
+        if (!$this->queue->markSent((int) $request->id, ReviewRequestToken::hash($token), ReviewRequestToken::hash($unsubscribeToken), $now)) {
+            return self::TAKEN;
+        }
+        $this->queue->storeItems((int) $request->id, $purchases);
 
         try {
             [$sent, $error] = $this->mailer->send($order, $purchases, $token, $unsubscribeToken, (string) $email);
@@ -128,12 +138,12 @@ class ReviewRequestCron
         }
 
         if ($sent) {
-            return true;
+            return self::SENT;
         }
 
         $this->queue->markFailed($request, $error, $now);
         $this->logger->warning('ReviewRequests: лист для замовлення ' . (int) $order->id . ' не надіслано: ' . $error);
 
-        return false;
+        return self::FAILED;
     }
 }

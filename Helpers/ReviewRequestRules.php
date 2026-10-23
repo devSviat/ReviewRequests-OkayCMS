@@ -31,7 +31,10 @@ class ReviewRequestRules
      */
     public static function normalizeEmail($email): ?string
     {
-        $email = mb_strtolower(trim((string) $email));
+        if (!is_string($email)) {
+            return null;
+        }
+        $email = mb_strtolower(trim($email));
 
         return $email !== '' && strpbrk($email, ',"') === false && filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
     }

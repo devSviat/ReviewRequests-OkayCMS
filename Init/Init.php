@@ -104,7 +104,7 @@ class Init extends AbstractInit
         $tables = [];
         foreach ($serviceLocator->getService(QueryFactory::class)->newSqlQuery()->setStatement('SHOW TABLES')->results() as $row) {
             $name = (string) current((array) $row);
-            if ($prefix !== '' && str_starts_with($name, $prefix)) {
+            if (str_starts_with($name, $prefix)) {
                 $tables['__' . substr($name, strlen($prefix))] = true;
             }
         }

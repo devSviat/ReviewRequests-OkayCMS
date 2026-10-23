@@ -133,6 +133,19 @@ class ReviewRequestRulesTest extends TestCase
         $this->assertNull(ReviewRequestRules::normalizeEmail('"a,victim@x.com,b"@y.com'));
         $this->assertNull(ReviewRequestRules::normalizeEmail('"quoted"@y.com'));
         $this->assertSame('a.b+c@y.com', ReviewRequestRules::normalizeEmail('A.B+c@Y.com'));
+        $this->assertNull(ReviewRequestRules::normalizeEmail(['a@y.com']), 'test_email[]=… з форми');
+    }
+
+    /** «https://evil.com\@shop.com»: parse_url() бачить хост shop.com, браузер — evil.com. */
+    public function testBaseUrlRejectsAnythingButSchemeHostPort(): void
+    {
+        foreach (['https://shop.example', 'http://shop.example:8080', 'https://sub.shop-1.example'] as $ok) {
+            $this->assertTrue(ReviewRequestSettings::isBaseUrl($ok), $ok);
+        }
+        foreach (['https://evil.com\\@shop.example', 'https://evil.com@shop.example', 'https://shop.example/path',
+                     'https://shop.example?x', 'https://shop.example#x', 'https://sh%6fp.example', 'javascript://x', 'https://-shop.example', ''] as $bad) {
+            $this->assertFalse(ReviewRequestSettings::isBaseUrl($bad), $bad);
+        }
     }
 
     public function testEmailIsNormalisedBeforeHashing(): void

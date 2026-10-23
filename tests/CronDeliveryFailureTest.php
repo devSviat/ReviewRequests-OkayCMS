@@ -36,7 +36,7 @@ class CronDeliveryFailureTest extends TestCase
     }
 
     /** Черга з двома запитами, кожен готовий до відправки. */
-    private function queue(bool $mock = true): ReviewRequestQueue
+    private function queue(bool $mock = true, bool $withClaim = true): ReviewRequestQueue
     {
         $queue = $mock ? $this->createMock(ReviewRequestQueue::class) : $this->createStub(ReviewRequestQueue::class);
         $queue->method('hasBaseline')->willReturn(true);
@@ -48,6 +48,9 @@ class CronDeliveryFailureTest extends TestCase
             fn($id) => (object) ['id' => $id, 'status_id' => 4, 'email' => "buyer{$id}@example.com", 'date' => '2026-11-01 09:00:00']
         );
         $queue->method('reviewablePurchases')->willReturn([(object) ['id' => 5, 'product_id' => 7]]);
+        if ($withClaim) {
+            $queue->method('markSent')->willReturn(true);
+        }
 
         return $queue;
     }
@@ -96,8 +99,8 @@ class CronDeliveryFailureTest extends TestCase
     public function testRequestIsMarkedSentBeforeDelivery(): void
     {
         $calls = [];
-        $queue = $this->queue(false);
-        $queue->method('markSent')->willReturnCallback(function () use (&$calls) { $calls[] = 'markSent'; });
+        $queue = $this->queue(false, false);
+        $queue->method('markSent')->willReturnCallback(function () use (&$calls) { $calls[] = 'markSent'; return true; });
         $mailer = $this->createStub(ReviewRequestMailer::class);
         $mailer->method('send')->willReturnCallback(function () use (&$calls) { $calls[] = 'send'; return [true, '']; });
 
@@ -110,9 +113,10 @@ class CronDeliveryFailureTest extends TestCase
     public function testReviewAndUnsubscribeTokensDiffer(): void
     {
         $hashes = [];
-        $queue = $this->queue(false);
+        $queue = $this->queue(false, false);
         $queue->method('markSent')->willReturnCallback(function ($id, $tokenHash, $unsubscribeHash) use (&$hashes) {
             $hashes = [$tokenHash, $unsubscribeHash];
+            return true;
         });
         $sent = [];
         $mailer = $this->createStub(ReviewRequestMailer::class);
@@ -125,6 +129,19 @@ class CronDeliveryFailureTest extends TestCase
 
         $this->assertNotSame($sent[0], $sent[1]);
         $this->assertSame([hash('sha256', $sent[0]), hash('sha256', $sent[1])], $hashes);
+    }
+
+    /** Запит, який уже забрав інший прогін (pending → sent не вдався), не надсилається. */
+    public function testRequestTakenByAnotherRunIsNotSent(): void
+    {
+        $queue = $this->queue(false, false);
+        $queue->method('markSent')->willReturn(false);
+        $mailer = $this->createMock(ReviewRequestMailer::class);
+        $mailer->expects($this->never())->method('send');
+
+        $stats = $this->cron($queue, $mailer, $this->settings([]))->run(new DateTimeImmutable(self::NOW));
+
+        $this->assertSame([0, 0], [$stats['sent'], $stats['failed']]);
     }
 
     /** @return array<int, array{0: int, 1: string, 2: ?string}> */

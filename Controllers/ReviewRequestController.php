@@ -126,7 +126,7 @@ class ReviewRequestController extends AbstractController
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_regenerate_id(true);
         }
-        $_SESSION[self::UNSUBSCRIBE_KEY] = (int) $request->id;
+        $_SESSION[self::UNSUBSCRIBE_KEY] = ['id' => (int) $request->id, 'opened_at' => time()];
         $this->redirectWithoutToken('Sviat_ReviewRequests_unsubscribe_form');
     }
 
@@ -138,7 +138,10 @@ class ReviewRequestController extends AbstractController
             return $this->invalidLink($code);
         }
 
-        $id = (int) ($_SESSION[self::UNSUBSCRIBE_KEY] ?? 0);
+        // Той самий строк, що й для форми: на спільному комп'ютері наступна
+        // людина не має відписати попередню.
+        $stored = $_SESSION[self::UNSUBSCRIBE_KEY] ?? null;
+        $id = is_array($stored) && time() - (int) ($stored['opened_at'] ?? 0) <= self::SESSION_TTL ? (int) ($stored['id'] ?? 0) : 0;
         $request = $id > 0
             ? $this->entityFactory->get(ReviewRequestsEntity::class)->findOne(['id' => $id, 'status' => ReviewRequestsEntity::STATUS_SENT])
             : null;
@@ -181,12 +184,11 @@ class ReviewRequestController extends AbstractController
     private function oneClickUnsubscribe($token, ReviewRequestPreferences $preferences): void
     {
         $this->response->addHeader('Cache-Control: no-store, private');
-        if ($this->tooManyFailures()) {
+        $request = $this->findSentRequest($token, 'unsubscribe_hash', false);
+        if ($request === null && $this->tooManyFailures()) {
             $this->response->setStatusCode(429)->setContent('Too Many Requests', RESPONSE_TEXT);
             return;
         }
-
-        $request = $this->findSentRequest($token, 'unsubscribe_hash', false);
         if ($request === null || empty($request->email_hash)) {
             $this->registerFailure();
             $this->response->setStatusCode(404)->setContent('Not Found', RESPONSE_TEXT);
@@ -205,8 +207,8 @@ class ReviewRequestController extends AbstractController
         $itemId = (int) $this->request->post('item_id', 'integer');
         $item = $items[$itemId] ?? null;
         $data = [
-            'name' => trim((string) $this->request->post('name')),
-            'text' => trim((string) $this->request->post('text')),
+            'name' => trim($this->postString('name')),
+            'text' => trim($this->postString('text')),
             'rating' => $this->rating(),
         ];
 
@@ -259,6 +261,17 @@ class ReviewRequestController extends AbstractController
         return null;
     }
 
+    /**
+     * Поле форми як рядок; масив (name[]=…) — порожній рядок, а не «Array».
+     * Керівні символи (NUL тощо) прибираються, переноси рядків і табуляція лишаються.
+     */
+    private function postString(string $name): string
+    {
+        $value = $this->request->post($name);
+
+        return is_string($value) ? (string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $value) : '';
+    }
+
     private function rating(): ?int
     {
         $rating = (int) $this->request->post('rating', 'integer');
@@ -276,7 +289,8 @@ class ReviewRequestController extends AbstractController
      */
     private function findSentRequest($token, string $hashField, bool $mustBeValid): ?object
     {
-        if (!ReviewRequestToken::isWellFormed($token)) {
+        // Entity мовчки ігнорує невідомий фільтр: хибна назва поля дала б будь-який надісланий запит.
+        if (!in_array($hashField, ['token_hash', 'unsubscribe_hash'], true) || !ReviewRequestToken::isWellFormed($token)) {
             return null;
         }
 
@@ -300,12 +314,14 @@ class ReviewRequestController extends AbstractController
      */
     private function tokenRequest($token, string $hashField, bool $mustBeValid, string $invalidRoute = 'Sviat_ReviewRequests_form'): ?object
     {
-        if ($this->tooManyFailures()) {
+        // Спершу токен, потім ліміт: за проксі (Cloudflare тощо) багато покупців
+        // мають одну REMOTE_ADDR, і чужі хибні спроби не мають блокувати дійсне
+        // посилання. 256-бітний токен перебором не вгадати — ліміт лише гасить шум.
+        $request = $this->findSentRequest($token, $hashField, $mustBeValid);
+        if ($request === null && $this->tooManyFailures()) {
             $this->redirectWithoutToken($invalidRoute, 429);
             return null;
         }
-
-        $request = $this->findSentRequest($token, $hashField, $mustBeValid);
         if ($request === null) {
             $this->registerFailure();
             $this->redirectWithoutToken($invalidRoute, 404);
@@ -323,6 +339,9 @@ class ReviewRequestController extends AbstractController
         if ($invalidCode !== null) {
             $_SESSION[self::INVALID_KEY] = $invalidCode;
         }
+        // redirectTo() не віддає заголовків, доданих через addHeader(): відповідь
+        // на адресу з токеном не має осідати в кеші проксі чи браузера.
+        header('Cache-Control: no-store, private');
         $this->response->redirectTo(Router::generateUrl($route, [], true), 303);
     }
 
@@ -415,9 +434,19 @@ class ReviewRequestController extends AbstractController
         return $this->serviceLocator->getService(AttemptLimiter::class);
     }
 
+    /**
+     * Ключ ліміту спроб. IPv6 — за /64: одна мережа має їх мільярди, і кожна
+     * адреса інакше давала б нові 10 спроб і новий файл лічильника.
+     */
     private function clientKey(): string
     {
-        return 'review_request:' . (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        $packed = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) ? inet_pton($ip) : false;
+        if ($packed !== false) {
+            $ip = bin2hex(substr($packed, 0, 8)) . '::/64';
+        }
+
+        return 'review_request:' . $ip;
     }
 
     private function storeFlash(array $flash): void
