@@ -99,7 +99,7 @@
 
 ## Вимоги
 
-- PHP 8.4+
+- PHP 8.5+
 - [Форк OkayCMS](https://github.com/devSviat/OkayCMS-Fork)
 - Планувальник OkayCMS у cron (див. нижче)
 - Перевірено на PHP 8.5

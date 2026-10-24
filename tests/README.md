@@ -46,7 +46,7 @@ vendor/bin/phpunit tests/Modules/Sviat/ReviewRequests
 
 На кожен PR і мердж у `main`:
 
-1. `php -l` на всьому коді модуля під PHP 8.4 і 8.5;
+1. `php -l` на всьому коді модуля під PHP 8.5;
 2. модуль ставиться у [форк OkayCMS](https://github.com/devSviat/OkayCMS-Fork) і там
    запускається `phpunit`;
 3. після мерджу, якщо версія в `Init/module.json` ще не має тега, ставиться тег
