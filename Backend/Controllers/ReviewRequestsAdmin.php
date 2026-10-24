@@ -21,7 +21,7 @@ use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestSettings;
 class ReviewRequestsAdmin extends IndexAdmin
 {
     /** Межі числових налаштувань: поза ними значення не зберігається. */
-    private const LIMITS = [
+    private const array LIMITS = [
         'delay_days' => [0, 90],
         'window_from' => [0, 23],
         'window_to' => [0, 24],
@@ -31,7 +31,7 @@ class ReviewRequestsAdmin extends IndexAdmin
         'token_ttl_days' => [1, 180],
     ];
 
-    private const LOG_SIZE = 50;
+    private const int LOG_SIZE = 50;
 
     public function fetch(
         ReviewRequestSettings $moduleSettings,
@@ -93,9 +93,9 @@ class ReviewRequestsAdmin extends IndexAdmin
         $logStatus = $this->logStatusFilter();
         $this->design->assign('rr_log_status', $logStatus);
         $this->design->assign('rr_log', $this->log($queryFactory, $logStatus));
-        $this->design->assign('rr_sent_today', $queue->sentSince((new DateTimeImmutable())->setTime(0, 0)));
-        $this->design->assign('rr_server_time', (new DateTimeImmutable())->format('d.m.Y H:i'));
-        $this->design->assign('rr_in_window', (new ReviewRequestRules($moduleSettings))->inSendWindow(new DateTimeImmutable()));
+        $this->design->assign('rr_sent_today', $queue->sentSince(new DateTimeImmutable()->setTime(0, 0)));
+        $this->design->assign('rr_server_time', new DateTimeImmutable()->format('d.m.Y H:i'));
+        $this->design->assign('rr_in_window', new ReviewRequestRules($moduleSettings)->inSendWindow(new DateTimeImmutable()));
 
         $this->response->setContent($this->design->fetch('review_requests.tpl'));
     }
@@ -108,8 +108,8 @@ class ReviewRequestsAdmin extends IndexAdmin
             : ReviewRequestSettings::MODE_TEST);
 
         // Лише скаляри: intval(['4']) дає 1, і statuses[][]=4 зберіг би статус 1.
-        $posted = array_filter((array) $this->request->post('statuses'), 'is_scalar');
-        $statuses = array_values(array_unique(array_filter(array_map('intval', $posted))));
+        $posted = array_filter((array) $this->request->post('statuses'), is_scalar(...));
+        $statuses = array_values(array_unique(array_filter(array_map(intval(...), $posted))));
         sort($statuses);
         $current = $settings->completedStatuses();
         sort($current);
@@ -250,7 +250,7 @@ class ReviewRequestsAdmin extends IndexAdmin
             $byStatus[$row->status] = (int) $row->cnt;
         }
 
-        $since = (new DateTimeImmutable('-30 days'))->format('Y-m-d H:i:s');
+        $since = new DateTimeImmutable('-30 days')->format('Y-m-d H:i:s');
         $recent = $queryFactory->newSqlQuery()->setStatement(
             'SELECT
                 SUM(rr.sent_at >= :since) AS sent,

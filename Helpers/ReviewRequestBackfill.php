@@ -99,14 +99,14 @@ class ReviewRequestBackfill
              FROM __sviat__review_requests rr
              JOIN __orders o ON o.id = rr.order_id
              WHERE rr.status = :baseline
-               AND o.status_id IN (' . implode(',', array_map('intval', $statuses)) . ')
+               AND o.status_id IN (' . implode(',', array_map(intval(...), $statuses)) . ')
                AND o.date >= :from AND o.date < :to
              ORDER BY o.id
              LIMIT ' . (self::MAX_PER_RUN + 1)
         )->bindValues([
             'baseline' => ReviewRequestsEntity::STATUS_BASELINE,
             'from' => $from . ' 00:00:00',
-            'to' => (new DateTimeImmutable($to))->modify('+1 day')->format('Y-m-d') . ' 00:00:00',
+            'to' => new DateTimeImmutable($to)->modify('+1 day')->format('Y-m-d') . ' 00:00:00',
         ])->results();
     }
 }

@@ -14,7 +14,7 @@ class ReviewRequestsPreferencesPlugin extends Func
 {
     protected $tag = 'sviat_review_requests_preferences';
 
-    private const TEMPLATE = 'Okay/Modules/Sviat/ReviewRequests/design/html/user_preferences.tpl';
+    private const string TEMPLATE = 'Okay/Modules/Sviat/ReviewRequests/design/html/user_preferences.tpl';
 
     private Design $design;
     private ReviewRequestPreferences $preferences;

@@ -31,7 +31,7 @@ class ReviewRequestPreferences
             $optouts->add([
                 'email_hash' => $emailHash,
                 'user_id' => $userId,
-                'created_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+                'created_at' => new DateTimeImmutable()->format('Y-m-d H:i:s'),
             ]);
             return;
         }

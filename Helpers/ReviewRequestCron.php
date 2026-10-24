@@ -16,11 +16,11 @@ use Psr\Log\LoggerInterface;
 class ReviewRequestCron
 {
     /** Скільки запитів черги розглядати за прогін: з запасом над добовим лімітом. */
-    private const REVIEW_BATCH = 200;
+    private const int REVIEW_BATCH = 200;
 
-    private const SENT = 'sent';
-    private const FAILED = 'failed';
-    private const TAKEN = 'taken';
+    private const string SENT = 'sent';
+    private const string FAILED = 'failed';
+    private const string TAKEN = 'taken';
 
     private ReviewRequestQueue $queue;
     private ReviewRequestRules $rules;
@@ -47,7 +47,7 @@ class ReviewRequestCron
      */
     public function run(?DateTimeImmutable $now = null): array
     {
-        $now = $now ?? new DateTimeImmutable();
+        $now ??= new DateTimeImmutable();
         $stats = ['detected' => 0, 'sent' => 0, 'failed' => 0, 'closed' => 0, 'waiting' => 0];
 
         if (!$this->queue->hasBaseline()) {

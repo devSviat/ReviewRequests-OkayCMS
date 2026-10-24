@@ -21,7 +21,7 @@ use Okay\Modules\Sviat\ReviewRequests\Entities\ReviewRequestsEntity;
  */
 class ReviewRequestQueue
 {
-    private const DATETIME = 'Y-m-d H:i:s';
+    private const string DATETIME = 'Y-m-d H:i:s';
 
     /** Скільки нових виконаних замовлень виявляти за один прогін. */
     public const DETECT_BATCH = 500;
@@ -42,7 +42,7 @@ class ReviewRequestQueue
      * Збій пошти зазвичай спільний для всіх листів: без паузи три прогони
      * планувальника (45 хв) назавжди закрили б увесь чекаючий обсяг.
      */
-    private const RETRY_AFTER_HOURS = [1 => 1, 2 => 24];
+    private const array RETRY_AFTER_HOURS = [1 => 1, 2 => 24];
 
     private EntityFactory $entityFactory;
     private QueryFactory $queryFactory;
@@ -73,7 +73,7 @@ class ReviewRequestQueue
     {
         $this->settings->set('baseline_at', $now->format(self::DATETIME));
 
-        $statuses = $statuses ?? $this->settings->completedStatuses();
+        $statuses ??= $this->settings->completedStatuses();
         if ($statuses === []) {
             return 0;
         }
@@ -342,6 +342,6 @@ class ReviewRequestQueue
     /** @param int[] $ids */
     private function intList(array $ids): string
     {
-        return implode(',', array_map('intval', $ids));
+        return implode(',', array_map(intval(...), $ids));
     }
 }

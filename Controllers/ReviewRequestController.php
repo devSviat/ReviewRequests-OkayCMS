@@ -37,14 +37,14 @@ class ReviewRequestController extends AbstractController
     public const SESSION_KEY = 'sviat__review_request_id';
     public const PREFERENCES_FLASH = 'sviat__review_requests__preferences_flash';
     public const UNSUBSCRIBE_KEY = 'sviat__review_request_unsubscribe_id';
-    private const INVALID_KEY = 'sviat__review_request_invalid';
+    private const string INVALID_KEY = 'sviat__review_request_invalid';
 
     /** Скільки секунд відкрите посилання дає писати відгуки з цього браузера. */
     public const SESSION_TTL = 86400;
     public const FORM = 'sviat_review_request';
 
-    private const NAME_MAX = 100;
-    private const TEXT_MAX = 5000;
+    private const int NAME_MAX = 100;
+    private const int TEXT_MAX = 5000;
 
     public function open($token)
     {
@@ -55,7 +55,7 @@ class ReviewRequestController extends AbstractController
 
         if (empty($request->first_visit_at)) {
             $this->entityFactory->get(ReviewRequestsEntity::class)->update((int) $request->id, [
-                'first_visit_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+                'first_visit_at' => new DateTimeImmutable()->format('Y-m-d H:i:s'),
             ]);
         }
 

@@ -10,7 +10,7 @@ namespace Okay\Modules\Sviat\ReviewRequests\Helpers;
 final class ReviewRequestToken
 {
     /** 32 байти в base64url без доповнення. */
-    public const PATTERN = '[A-Za-z0-9_-]{43}';
+    public const string PATTERN = '[A-Za-z0-9_-]{43}';
 
     public static function generate(): string
     {

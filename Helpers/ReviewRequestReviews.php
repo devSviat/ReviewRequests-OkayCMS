@@ -45,8 +45,8 @@ class ReviewRequestReviews
      */
     public function verifiedCommentIds(array $commentIds, array $completedStatuses): array
     {
-        $commentIds = array_values(array_filter(array_map('intval', $commentIds)));
-        $completedStatuses = array_values(array_filter(array_map('intval', $completedStatuses)));
+        $commentIds = array_values(array_filter(array_map(intval(...), $commentIds)));
+        $completedStatuses = array_values(array_filter(array_map(intval(...), $completedStatuses)));
         if ($commentIds === [] || $completedStatuses === []) {
             return [];
         }
@@ -63,7 +63,7 @@ class ReviewRequestReviews
                AND o.status_id IN (' . implode(',', $completedStatuses) . ')'
         )->bindValue('type', 'product')->results('id');
 
-        return array_fill_keys(array_map('intval', $ids), true);
+        return array_fill_keys(array_map(intval(...), $ids), true);
     }
 
     /** @return object[] позиції запиту з полем product, ключ — id позиції */
