@@ -65,7 +65,7 @@ class ReviewRequestSettings
     /** @return int[] */
     public function completedStatuses(): array
     {
-        return array_values(array_filter(array_map('intval', explode(',', (string) $this->get('statuses')))));
+        return array_values(array_filter(array_map(intval(...), explode(',', (string) $this->get('statuses')))));
     }
 
     public function int(string $name): int
@@ -103,6 +103,6 @@ class ReviewRequestSettings
     {
         $lines = preg_split('/[\s,;]+/', mb_strtolower((string) $this->get('excluded')));
 
-        return array_values(array_filter(array_map('trim', $lines ?: [])));
+        return array_values(array_filter(array_map(trim(...), $lines ?: [])));
     }
 }

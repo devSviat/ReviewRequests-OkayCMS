@@ -36,49 +36,49 @@ class Init extends AbstractInit
 
         if (!isset($existing[ReviewRequestsEntity::getTable()])) {
             $this->migrateEntityTable(ReviewRequestsEntity::class, [
-                (new EntityField('id'))->setIndexPrimaryKey()->setTypeInt(11, false)->setAutoIncrement(),
-                (new EntityField('order_id'))->setTypeInt(11)->setIndexUnique(),
-                (new EntityField('status'))->setTypeEnum(ReviewRequestsEntity::STATUSES, false)->setIndex(),
-                (new EntityField('skip_reason'))->setTypeVarchar(32)->setNullable(),
-                (new EntityField('email_hash'))->setTypeVarchar(64)->setNullable()->setIndex(),
-                (new EntityField('lang_id'))->setTypeInt(11)->setNullable(),
-                (new EntityField('detected_at'))->setTypeDatetime()->setNullable()->setIndex(),
-                (new EntityField('sent_at'))->setTypeDatetime()->setNullable()->setIndex(),
-                (new EntityField('token_hash'))->setTypeVarchar(64)->setNullable()->setIndexUnique(),
-                (new EntityField('unsubscribe_hash'))->setTypeVarchar(64)->setNullable()->setIndexUnique(),
-                (new EntityField('token_expires_at'))->setTypeDatetime()->setNullable(),
-                (new EntityField('first_visit_at'))->setTypeDatetime()->setNullable(),
-                (new EntityField('attempts'))->setTypeTinyInt(3)->setDefault(0),
-                (new EntityField('retry_at'))->setTypeDatetime()->setNullable(),
-                (new EntityField('error_text'))->setTypeText()->setNullable(),
+                new EntityField('id')->setIndexPrimaryKey()->setTypeInt(11, false)->setAutoIncrement(),
+                new EntityField('order_id')->setTypeInt(11)->setIndexUnique(),
+                new EntityField('status')->setTypeEnum(ReviewRequestsEntity::STATUSES, false)->setIndex(),
+                new EntityField('skip_reason')->setTypeVarchar(32)->setNullable(),
+                new EntityField('email_hash')->setTypeVarchar(64)->setNullable()->setIndex(),
+                new EntityField('lang_id')->setTypeInt(11)->setNullable(),
+                new EntityField('detected_at')->setTypeDatetime()->setNullable()->setIndex(),
+                new EntityField('sent_at')->setTypeDatetime()->setNullable()->setIndex(),
+                new EntityField('token_hash')->setTypeVarchar(64)->setNullable()->setIndexUnique(),
+                new EntityField('unsubscribe_hash')->setTypeVarchar(64)->setNullable()->setIndexUnique(),
+                new EntityField('token_expires_at')->setTypeDatetime()->setNullable(),
+                new EntityField('first_visit_at')->setTypeDatetime()->setNullable(),
+                new EntityField('attempts')->setTypeTinyInt(3)->setDefault(0),
+                new EntityField('retry_at')->setTypeDatetime()->setNullable(),
+                new EntityField('error_text')->setTypeText()->setNullable(),
             ]);
         }
 
         if (!isset($existing[ReviewRequestItemsEntity::getTable()])) {
             $this->migrateEntityTable(ReviewRequestItemsEntity::class, [
-                (new EntityField('id'))->setIndexPrimaryKey()->setTypeInt(11, false)->setAutoIncrement(),
-                (new EntityField('request_id'))->setTypeInt(11)->setIndex(),
-                (new EntityField('purchase_id'))->setTypeInt(11),
-                (new EntityField('product_id'))->setTypeInt(11)->setIndex(),
-                (new EntityField('comment_id'))->setTypeInt(11)->setNullable()->setIndexUnique(),
-                (new EntityField('reviewed_at'))->setTypeDatetime()->setNullable(),
+                new EntityField('id')->setIndexPrimaryKey()->setTypeInt(11, false)->setAutoIncrement(),
+                new EntityField('request_id')->setTypeInt(11)->setIndex(),
+                new EntityField('purchase_id')->setTypeInt(11),
+                new EntityField('product_id')->setTypeInt(11)->setIndex(),
+                new EntityField('comment_id')->setTypeInt(11)->setNullable()->setIndexUnique(),
+                new EntityField('reviewed_at')->setTypeDatetime()->setNullable(),
             ]);
         }
 
         if (!isset($existing[ReviewRequestOptoutsEntity::getTable()])) {
             $this->migrateEntityTable(ReviewRequestOptoutsEntity::class, [
-                (new EntityField('id'))->setIndexPrimaryKey()->setTypeInt(11, false)->setAutoIncrement(),
-                (new EntityField('email_hash'))->setTypeVarchar(64)->setIndexUnique(),
-                (new EntityField('user_id'))->setTypeInt(11)->setNullable(),
-                (new EntityField('created_at'))->setTypeDatetime()->setNullable(),
+                new EntityField('id')->setIndexPrimaryKey()->setTypeInt(11, false)->setAutoIncrement(),
+                new EntityField('email_hash')->setTypeVarchar(64)->setIndexUnique(),
+                new EntityField('user_id')->setTypeInt(11)->setNullable(),
+                new EntityField('created_at')->setTypeDatetime()->setNullable(),
             ]);
         }
 
         // Таблиці з попереднього встановлення можуть не мати пізніших колонок,
         // а Entity вибирає всі поля явно: без колонки падав би кожен запит до таблиці.
-        $this->migrateEntityField(ReviewRequestsEntity::class, (new EntityField('retry_at'))->setTypeDatetime()->setNullable());
-        $this->migrateEntityField(ReviewRequestsEntity::class, (new EntityField('unsubscribe_hash'))->setTypeVarchar(64)->setNullable()->setIndexUnique());
-        $this->migrateEntityField(ReviewRequestOptoutsEntity::class, (new EntityField('user_id'))->setTypeInt(11)->setNullable());
+        $this->migrateEntityField(ReviewRequestsEntity::class, new EntityField('retry_at')->setTypeDatetime()->setNullable());
+        $this->migrateEntityField(ReviewRequestsEntity::class, new EntityField('unsubscribe_hash')->setTypeVarchar(64)->setNullable()->setIndexUnique());
+        $this->migrateEntityField(ReviewRequestOptoutsEntity::class, new EntityField('user_id')->setTypeInt(11)->setNullable());
 
         // Тестовий режим і базова лінія — разом: модуль, щойно встановлений,
         // не може надіслати жодного листа, а історія замовлень не стане чергою.
@@ -86,14 +86,14 @@ class Init extends AbstractInit
         $serviceLocator = ServiceLocator::getInstance();
         $settings = new ReviewRequestSettings($serviceLocator->getService(Settings::class));
         $settings->set('mode', ReviewRequestSettings::MODE_TEST);
-        $settings->set('installed_at', (new DateTimeImmutable())->format('Y-m-d H:i:s'));
+        $settings->set('installed_at', new DateTimeImmutable()->format('Y-m-d H:i:s'));
 
-        (new ReviewRequestQueue(
+        new ReviewRequestQueue(
             $serviceLocator->getService(EntityFactory::class),
             $serviceLocator->getService(QueryFactory::class),
             $settings,
             new ReviewRequestRules($settings)
-        ))->baseline(new DateTimeImmutable());
+        )->baseline(new DateTimeImmutable());
     }
 
     /**
@@ -150,7 +150,7 @@ class Init extends AbstractInit
         );
 
         $this->registerSchedule(
-            (new Schedule([ReviewRequestCron::class, 'run']))
+            new Schedule([ReviewRequestCron::class, 'run'])
                 ->name('ReviewRequests: виявити виконані замовлення й надіслати прохання про відгук')
                 ->time('*/15 * * * *')
                 ->overlap(false)
