@@ -11,6 +11,7 @@ use Okay\Core\ServiceLocator;
 use Okay\Core\Settings;
 use Okay\Entities\CommentsEntity;
 use Okay\Entities\ProductsEntity;
+use Okay\Helpers\CommentsHelper;
 use Okay\Helpers\RatingHelper;
 use Okay\Modules\Sviat\ReviewRequests\Entities\ReviewRequestItemsEntity;
 
@@ -136,6 +137,12 @@ class ReviewRequestReviews
         if ($comment['approved']) {
             ServiceLocator::getInstance()->getService(RatingHelper::class)
                 ->recalculateFromReviews($this->entityFactory->get(ProductsEntity::class), (int) $item->product_id, 'product');
+        } else {
+            $commentsHelper = ServiceLocator::getInstance()->getService(CommentsHelper::class);
+            // Ядро без цього методу (стоковий 4.5.3) показує несхвалений відгук за IP автора.
+            if (method_exists($commentsHelper, 'rememberOwnComment')) {
+                $commentsHelper->rememberOwnComment($commentId);
+            }
         }
         try {
             ServiceLocator::getInstance()->getService(Notify::class)->emailCommentAdmin($commentId);
