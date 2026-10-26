@@ -22,6 +22,7 @@ use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestQueue;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestReviews;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestRules;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestSettings;
+use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestVerifiedBackfill;
 use Psr\Log\LoggerInterface;
 
 return [
@@ -86,6 +87,15 @@ return [
             new SR(EntityFactory::class),
             new SR(QueryFactory::class),
             new SR(Settings::class),
+        ],
+    ],
+    ReviewRequestVerifiedBackfill::class => [
+        'class' => ReviewRequestVerifiedBackfill::class,
+        'arguments' => [
+            new SR(QueryFactory::class),
+            new SR(ReviewRequestSettings::class),
+            new SR(ReviewRequestReviews::class),
+            new SR(Config::class),
         ],
     ],
     ReviewRequestPreferences::class => [

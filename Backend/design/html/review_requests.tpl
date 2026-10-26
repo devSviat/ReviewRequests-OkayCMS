@@ -25,6 +25,7 @@
                 {if $message_success == 'saved'}{$btr->general_settings_saved|escape}
                 {elseif $message_success == 'test_sent'}{$btr->sviat__review_requests__test_sent|escape}
                 {elseif $message_success == 'optout_removed'}{$btr->sviat__review_requests__optout_removed|escape}
+                {elseif $message_success == 'verified_done'}{$btr->sviat__review_requests__verified_done|escape}: {$rr_verified_done_count|escape}
                 {elseif $message_success == 'backfill_done'}{$btr->sviat__review_requests__backfill_done|escape}: {$rr_backfill_count|escape}
                 {/if}
             </div>
@@ -39,6 +40,7 @@
                 {elseif $message_error == 'test_no_orders'}{$btr->sviat__review_requests__test_no_orders|escape}
                 {elseif $message_error == 'optout_not_found'}{$btr->sviat__review_requests__optout_not_found|escape}
                 {elseif $message_error == 'root_url_foreign'}{$btr->sviat__review_requests__root_url_foreign|escape}
+                {elseif $message_error == 'verified_unavailable'}{$btr->sviat__review_requests__verified_unavailable|escape}
                 {elseif $message_error == 'test_too_many'}{$btr->sviat__review_requests__test_too_many|escape}
                 {else}{$btr->sviat__review_requests__test_failed|escape}{/if}
             </div>
@@ -354,6 +356,52 @@
                             </div>
                         {/if}
                     </form>
+                </section>
+
+                <section class="boxed rr-card rr-card--wide">
+                    <h2 class="rr-card__title">{$btr->sviat__review_requests__verified_title|escape}</h2>
+                    {if $rr_verified_done_at}
+                        <p class="rr-help">{$btr->sviat__review_requests__verified_done_at|escape} {$rr_verified_done_at|escape}: {$rr_verified_done_count|escape}</p>
+                    {else}
+                        <p class="rr-help">{$btr->sviat__review_requests__verified_hint|escape}</p>
+                        <form method="post" action="{url active_tab='rr_tools'}">
+                            <input type="hidden" name="session_id" value="{$smarty.session.id}">
+                            <button type="submit" name="action" value="verified_preview" class="btn btn_small btn-outline-info">{$btr->sviat__review_requests__verified_preview|escape}</button>
+                            {if $verified_preview}
+                                <div class="rr-preview">
+                                    <div class="rr-preview__numbers">
+                                        <div><span class="rr-preview__value rr-ok">{$verified_preview.total|escape}</span>{$btr->sviat__review_requests__verified_found|escape}</div>
+                                    </div>
+                                    {if $verified_preview.rows}
+                                        <div class="rr-table-wrap">
+                                            <table class="rr-table">
+                                                <thead><tr>
+                                                    <th>{$btr->sviat__review_requests__verified_col_date|escape}</th>
+                                                    <th>{$btr->sviat__review_requests__verified_col_author|escape}</th>
+                                                    <th>{$btr->sviat__review_requests__verified_col_product|escape}</th>
+                                                    <th>{$btr->sviat__review_requests__verified_col_order|escape}</th>
+                                                </tr></thead>
+                                                <tbody>
+                                                    {foreach $verified_preview.rows as $row}
+                                                        <tr>
+                                                            <td>{$row->date|escape}</td>
+                                                            <td>{$row->name|escape}<br><span class="rr-muted">{$row->email_shown|escape}</span></td>
+                                                            <td>{$row->product_name|escape}</td>
+                                                            <td><a href="{url controller=OrderAdmin id=$row->order_id return=null active_tab=null log_status=null}" target="_blank" rel="noopener">#{$row->order_id|escape}</a></td>
+                                                        </tr>
+                                                    {/foreach}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {if $verified_preview.total > $verified_preview.rows|count}<p class="rr-warn">{$btr->sviat__review_requests__verified_truncated|escape}</p>{/if}
+                                    {/if}
+                                    {if $verified_preview.total > 0}
+                                        <button type="submit" name="action" value="verified_confirm" class="btn btn_small btn-warning">{$btr->sviat__review_requests__verified_confirm|escape} ({$verified_preview.total|escape})</button>
+                                    {/if}
+                                </div>
+                            {/if}
+                        </form>
+                    {/if}
                 </section>
             </div>
         </div>
