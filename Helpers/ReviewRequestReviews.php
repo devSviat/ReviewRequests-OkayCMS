@@ -18,8 +18,8 @@ use Okay\Modules\Sviat\ReviewRequests\Entities\ReviewRequestItemsEntity;
 /**
  * Відгук за запитом — звичайний рядок __comments: модерація, відповіді адміна,
  * список і рейтинг працюють як для будь-якого відгуку. Зв'язок «відгук ↔
- * позиція замовлення» лише не дає оцінити позицію двічі; позначку «Перевірена
- * покупка» дає кабінет (verifiedCommentIds()).
+ * позиція замовлення» не дає оцінити позицію двічі й дає позначку «Перевірена
+ * покупка» (verifiedCommentIds()).
  */
 class ReviewRequestReviews
 {
@@ -35,10 +35,14 @@ class ReviewRequestReviews
     }
 
     /**
-     * Відгуки від покупців: автор увійшов у кабінет, а серед його замовлень є
-     * виконане з цим товаром, оформлене не пізніше за відгук. Те саме правило
-     * для відгуку зі сторінки товару й за посиланням із листа: доказ — кабінет,
-     * а не саме посилання. Гостьовий відгук і відповідь у гілці позначки не мають.
+     * Відгуки від покупців — за одним із трьох доказів, і в кожному замовлення
+     * досі у виконаному статусі:
+     * - кабінет: автор увійшов, серед його замовлень є це з товаром, оформлене не
+     *   пізніше за відгук;
+     * - посилання з листа: відгук залишено за позицією надісланого запиту — посилання
+     *   одноразове й прив'язане до цієї покупки;
+     * - разова дія адміна для старих відгуків (ReviewRequestVerifiedBackfill).
+     * Відповідь у гілці позначки не має.
      *
      * @param int[] $commentIds
      * @param int[] $completedStatuses
@@ -52,17 +56,43 @@ class ReviewRequestReviews
             return [];
         }
 
-        $ids = $this->queryFactory->newSqlQuery()->setStatement(
-            'SELECT DISTINCT c.id
+        $in = implode(',', $commentIds);
+        $statuses = implode(',', $completedStatuses);
+        $sql = 'SELECT c.id
              FROM __comments c
              JOIN __orders o ON o.user_id = c.user_id AND o.date <= c.date
              JOIN __purchases p ON p.order_id = o.id AND p.product_id = c.object_id
-             WHERE c.id IN (' . implode(',', $commentIds) . ')
-               AND c.type = :type
+             WHERE c.id IN (' . $in . ')
+               AND c.type = :type_cabinet
                AND c.parent_id = 0
                AND c.user_id > 0
-               AND o.status_id IN (' . implode(',', $completedStatuses) . ')'
-        )->bindValue('type', 'product')->results('id');
+               AND o.status_id IN (' . $statuses . ')
+             UNION
+             SELECT c.id
+             FROM __comments c
+             JOIN __sviat__review_request_items rri ON rri.comment_id = c.id AND rri.product_id = c.object_id
+             JOIN __sviat__review_requests rr ON rr.id = rri.request_id
+             JOIN __orders o ON o.id = rr.order_id
+             WHERE c.id IN (' . $in . ')
+               AND c.type = :type_link
+               AND c.parent_id = 0
+               AND o.status_id IN (' . $statuses . ')';
+        // Таблиця разової дії з'являється з оновленням модуля, а до натискання вона
+        // порожня: без цієї умови кожна сторінка відгуків до оновлення давала б SQL-помилку.
+        if ((string) $this->settings->get(ReviewRequestSettings::PREFIX . 'verified_backfill_at') !== '') {
+            $sql .= '
+             UNION
+             SELECT c.id
+             FROM __comments c
+             JOIN __sviat__review_request_verified rrv ON rrv.comment_id = c.id
+             JOIN __orders o ON o.id = rrv.order_id
+             WHERE c.id IN (' . $in . ')
+               AND c.parent_id = 0
+               AND o.status_id IN (' . $statuses . ')';
+        }
+
+        $ids = $this->queryFactory->newSqlQuery()->setStatement($sql)
+            ->bindValues(['type_cabinet' => 'product', 'type_link' => 'product'])->results('id');
 
         return array_fill_keys(array_map(intval(...), $ids), true);
     }

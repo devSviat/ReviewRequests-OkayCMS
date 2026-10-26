@@ -82,6 +82,10 @@
 .rr-ok {
     color: var(--ok-success);
 }
+.rr-muted {
+    color: var(--ok-ink-muted);
+    font-size: 12px;
+}
 .rr-warn {
     color: var(--ok-warning);
     font-size: 13px;

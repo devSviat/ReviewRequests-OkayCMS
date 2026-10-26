@@ -16,6 +16,7 @@ use Okay\Helpers\CommentsHelper;
 use Okay\Modules\Sviat\ReviewRequests\Entities\ReviewRequestItemsEntity;
 use Okay\Modules\Sviat\ReviewRequests\Entities\ReviewRequestOptoutsEntity;
 use Okay\Modules\Sviat\ReviewRequests\Entities\ReviewRequestsEntity;
+use Okay\Modules\Sviat\ReviewRequests\Entities\ReviewRequestVerifiedEntity;
 use Okay\Modules\Sviat\ReviewRequests\Extenders\FrontExtender;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestCron;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestQueue;
@@ -74,6 +75,8 @@ class Init extends AbstractInit
             ]);
         }
 
+        $this->createVerifiedTable($existing);
+
         // Таблиці з попереднього встановлення можуть не мати пізніших колонок,
         // а Entity вибирає всі поля явно: без колонки падав би кожен запит до таблиці.
         $this->migrateEntityField(ReviewRequestsEntity::class, new EntityField('retry_at')->setTypeDatetime()->setNullable());
@@ -113,6 +116,28 @@ class Init extends AbstractInit
             'skipped' => ReviewRequestsEntity::STATUS_SKIPPED,
             'reason' => 'no_email',
         ])->execute();
+    }
+
+    /** Таблиця разової дії «Перевірена покупка» для старих відгуків. */
+    public function update_1_0_6(): void
+    {
+        $this->createVerifiedTable($this->existingTables());
+    }
+
+    /** @param array<string, true> $existing */
+    private function createVerifiedTable(array $existing): void
+    {
+        if (isset($existing[ReviewRequestVerifiedEntity::getTable()])) {
+            return;
+        }
+
+        $this->migrateEntityTable(ReviewRequestVerifiedEntity::class, [
+            new EntityField('id')->setIndexPrimaryKey()->setTypeInt(11, false)->setAutoIncrement(),
+            new EntityField('comment_id')->setTypeInt(11)->setIndexUnique(),
+            new EntityField('order_id')->setTypeInt(11),
+            new EntityField('manager_id')->setTypeInt(11)->setNullable(),
+            new EntityField('created_at')->setTypeDatetime()->setNullable(),
+        ]);
     }
 
     /** @return array<string, true> таблиці БД у вигляді Entity::getTable(), тобто з «__» замість префікса */

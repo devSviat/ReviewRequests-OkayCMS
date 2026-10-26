@@ -17,6 +17,7 @@ use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestPreferences;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestQueue;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestRules;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestSettings;
+use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestVerifiedBackfill;
 
 class ReviewRequestsAdmin extends IndexAdmin
 {
@@ -38,6 +39,7 @@ class ReviewRequestsAdmin extends IndexAdmin
         ReviewRequestQueue $queue,
         ReviewRequestMailer $mailer,
         ReviewRequestBackfill $backfill,
+        ReviewRequestVerifiedBackfill $verifiedBackfill,
         EntityFactory $entityFactory,
         QueryFactory $queryFactory,
         ReviewRequestPreferences $preferences,
@@ -74,6 +76,23 @@ class ReviewRequestsAdmin extends IndexAdmin
                     $this->design->assign('backfill_preview', $backfill->preview(...$this->backfillPeriod()));
                     $this->design->assign('backfill_period', $this->backfillPeriod());
                     break;
+                case 'verified_preview':
+                    $preview = $verifiedBackfill->preview(new DateTimeImmutable());
+                    $preview['rows'] = self::journalRows($preview['rows'], self::showsFullEmails($this->managers, !empty($this->manager) ? $this->manager : null));
+                    $this->design->assign('verified_preview', $preview);
+                    break;
+                case 'verified_confirm':
+                    $count = $verifiedBackfill->apply(new DateTimeImmutable(), (int) ($this->manager->id ?? 0));
+                    if ($count === null) {
+                        $this->postRedirectGet->storeMessageError('verified_unavailable');
+                    } else {
+                        // Позначку бачать покупці на вітрині: слід у лозі, хто й коли її поставив.
+                        $logger->info('ReviewRequests: менеджер ' . (string) ($this->manager->login ?? '?')
+                            . ' позначив «Перевірена покупка» старі відгуки за email: ' . $count);
+                        $this->postRedirectGet->storeMessageSuccess('verified_done');
+                    }
+                    $this->postRedirectGet->redirect();
+                    break;
                 case 'backfill_confirm':
                     $_SESSION['sviat__review_requests__backfill_count'] = $backfill->enqueue(...$this->backfillPeriod());
                     $this->postRedirectGet->storeMessageSuccess('backfill_done');
@@ -85,6 +104,8 @@ class ReviewRequestsAdmin extends IndexAdmin
         if ($this->design->getVar('backfill_period') === null) {
             $this->design->assign('backfill_period', $this->backfillPeriod());
         }
+        $this->design->assign('rr_verified_done_at', $verifiedBackfill->doneAt());
+        $this->design->assign('rr_verified_done_count', $verifiedBackfill->doneCount());
         $this->design->assign('rr_backfill_count', (int) ($_SESSION['sviat__review_requests__backfill_count'] ?? 0));
         unset($_SESSION['sviat__review_requests__backfill_count']);
         $this->design->assign('rr', $this->settingsView($moduleSettings));
