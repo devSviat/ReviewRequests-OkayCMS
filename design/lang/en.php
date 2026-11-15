@@ -15,6 +15,7 @@ $lang['sviat__review_requests__error_name'] = 'Please enter your name';
 $lang['sviat__review_requests__error_rating'] = 'Please choose a rating from 1 to 5';
 $lang['sviat__review_requests__error_text'] = 'Please write a few words about the product';
 $lang['sviat__review_requests__error_not_saved'] = 'The review could not be saved. Please try again.';
+$lang['sviat__review_requests__error_personal_data'] = 'Your consent is required';
 $lang['sviat__review_requests__verified'] = 'Verified purchase';
 $lang['sviat__review_requests__verified_hint'] = 'The author bought this product in our store';
 $lang['sviat__review_requests__unsubscribe_title'] = 'Unsubscribe';

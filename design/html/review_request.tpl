@@ -13,6 +13,8 @@
                 <p>{$lang->sviat__review_requests__link_invalid|escape}</p>
             </div>
         {else}
+            {* Ширина як у колонки форми зв'язку чи відгуку на товарі (половина контенту), а не на весь контейнер. *}
+            <div class="review_request__forms" style="max-width:640px;">
             {if $rr_flash.saved}
                 <div class="message_success">{$lang->sviat__review_requests__saved|escape}</div>
             {/if}
@@ -46,7 +48,9 @@
                                 <input type="hidden" name="form_token" value="{$rr_form_tokens[$item->id]|escape}">
                                 <input type="hidden" name="item_id" value="{$item->id}">
 
-                                {if $is_error}
+                                {if $is_error && $rr_flash.error == 'personal_data'}
+                                    <div class="message_error" data-rr-consent-refused="{$item->id}">{$lang->sviat__personal_data__error|default:$lang->sviat__review_requests__error_personal_data|escape}</div>
+                                {elseif $is_error}
                                     <div class="message_error">
                                         {if $rr_flash.error == 'empty_name'}{$lang->sviat__review_requests__error_name|escape}
                                         {elseif $rr_flash.error == 'empty_rating'}{$lang->sviat__review_requests__error_rating|escape}
@@ -79,6 +83,7 @@
                                 </div>
 
                                 <div class="form__footer">
+                                    {get_design_block block="sviat_personal_data_review_request" vars=['sviat_pd_instance' => $item->id]}
                                     <input class="form__button" type="submit" value="{$lang->sviat__review_requests__submit|escape}" />
                                 </div>
                             </form>
@@ -88,6 +93,7 @@
 
                 <p class="text_grey" style="margin-top:20px;">{$lang->sviat__review_requests__moderation_note|escape}</p>
             {/if}
+            </div>
         {/if}
     </div>
 </div>
