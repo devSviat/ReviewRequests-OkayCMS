@@ -409,6 +409,39 @@ if (is_file(__DIR__ . '/../PersonalData/Support/BuildsConsentLedger.php')) {
         {
             return new \DOMXPath($element->ownerDocument);
         }
+
+        /**
+         * Стан PersonalData береться з модулів, запущених на старті запиту: isActiveModule() після старту щоразу
+         * йде в базу. Запит лишається лише для модуля, якого в цьому стані немає, і то один на обгортку.
+         */
+        public function testActivityFromRunningModulesWithoutQuery(): void
+        {
+            $facadeTaken = new \LogicException('фасад узято');
+            $running = static fn(string $isActive): array => ['Sviat/PersonalData' => ['vendor' => 'Sviat', 'module_name' => 'PersonalData', 'is_active' => $isActive]];
+
+            $disabled = $this->createMock(Modules::class);
+            $disabled->method('getRunningModules')->willReturn($running('0'));
+            $disabled->expects(self::never())->method('isActiveModule');
+            $consent = new PersonalDataConsent($disabled, static fn(): never => throw $facadeTaken);
+            self::assertNull($consent->check());
+            $consent->link(3);
+            self::assertNull($consent->check());
+
+            $missing = $this->createMock(Modules::class);
+            $missing->method('getRunningModules')->willReturn([]);
+            $missing->expects(self::once())->method('isActiveModule')->with('Sviat', 'PersonalData')->willReturn(false);
+            $consent = new PersonalDataConsent($missing, static fn(): never => throw $facadeTaken);
+            self::assertNull($consent->check());
+            $consent->link(3);
+            self::assertNull($consent->check());
+
+            $enabled = $this->createMock(Modules::class);
+            $enabled->method('getRunningModules')->willReturn($running('1'));
+            $enabled->expects(self::never())->method('isActiveModule');
+            $consent = new PersonalDataConsent($enabled, static fn(): never => throw $facadeTaken);
+            $this->expectExceptionObject($facadeTaken);
+            $consent->check();
+        }
     }
 
 } else {
