@@ -64,7 +64,7 @@ class ReviewRequestRulesTest extends TestCase
             'невалідний email' => [['email' => 'gmail'], [], [], self::NOW, [ReviewRequestRules::SKIP, 'invalid_email']],
             'відписався' => [[], ['opted_out' => true], [], self::NOW, [ReviewRequestRules::SKIP, 'opted_out']],
             'виключена адреса' => [[], [], ['excluded' => "buyer@example.com"], self::NOW, [ReviewRequestRules::SKIP, 'excluded']],
-            'виключений домен' => [[], [], ['excluded' => "f1center.ua, example.com"], self::NOW, [ReviewRequestRules::SKIP, 'excluded']],
+            'виключений домен' => [[], [], ['excluded' => "example.org, example.com"], self::NOW, [ReviewRequestRules::SKIP, 'excluded']],
             'замовлення старше 45 днів' => [['date' => '2026-10-01 10:00:00'], [], [], self::NOW, [ReviewRequestRules::SKIP, 'too_old']],
             'немає товарів, які можна оцінити' => [[], ['reviewable_items' => 0], [], self::NOW, [ReviewRequestRules::SKIP, 'no_products']],
             'цій адресі писали 30 днів тому' => [[], ['last_sent_to_email' => new DateTimeImmutable('2026-10-21 12:00:00')], [], self::NOW, [ReviewRequestRules::SKIP, 'recently_asked']],
