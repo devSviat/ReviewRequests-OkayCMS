@@ -14,6 +14,7 @@ use Okay\Modules\Sviat\ReviewRequests\Entities\ReviewRequestsEntity;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestPreferences;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestReviews;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestToken;
+use Okay\Modules\Sviat\ReviewRequests\Integration\PersonalDataConsent;
 
 /**
  * Сторінка за посиланням із листа.
@@ -69,7 +70,7 @@ class ReviewRequestController extends AbstractController
         $this->redirectWithoutToken('Sviat_ReviewRequests_form');
     }
 
-    public function form(ReviewRequestReviews $reviews, FrontTranslations $translations)
+    public function form(ReviewRequestReviews $reviews, FrontTranslations $translations, PersonalDataConsent $personalDataConsent)
     {
         $this->privatePage();
 
@@ -87,7 +88,7 @@ class ReviewRequestController extends AbstractController
         $items = $order ? $reviews->items((int) $request->id) : [];
 
         if ($this->request->method('post') && $order) {
-            $this->submit($reviews, $request, $order, $items);
+            $this->submit($reviews, $order, $items, $personalDataConsent);
             return;
         }
 
@@ -200,10 +201,19 @@ class ReviewRequestController extends AbstractController
     }
 
     /** @param object[] $items */
-    private function submit(ReviewRequestReviews $reviews, object $request, object $order, array $items): void
+    private function submit(ReviewRequestReviews $reviews, object $order, array $items, PersonalDataConsent $personalDataConsent): void
     {
         $this->checkCsrf();
+        $this->storeFlash($this->process($reviews, $order, $items, $personalDataConsent));
+        $this->response->redirectTo(Router::generateUrl('Sviat_ReviewRequests_form', [], true), 303);
+    }
 
+    /**
+     * @param object[] $items
+     * @return array<string, mixed> флеш для сторінки після редіректу
+     */
+    private function process(ReviewRequestReviews $reviews, object $order, array $items, PersonalDataConsent $personalDataConsent): array
+    {
         $itemId = (int) $this->request->post('item_id', 'integer');
         $item = $items[$itemId] ?? null;
         $data = [
@@ -213,6 +223,10 @@ class ReviewRequestController extends AbstractController
         ];
 
         $error = $this->validate($item, $data);
+        // До токена форми: відмова за згодою не витрачає його, і та сама форма з відміткою проходить.
+        if ($error === null && $personalDataConsent->check() !== null) {
+            $error = 'personal_data';
+        }
         if ($error === null && !$this->acceptFormToken([$itemId, $data])) {
             // Повтор тієї ж відправки (подвійний клік, F5): відгук уже є.
             $error = 'duplicate';
@@ -230,14 +244,15 @@ class ReviewRequestController extends AbstractController
             if ($commentId === null) {
                 $this->releaseFormToken();
                 $error = 'not_saved';
+            } else {
+                $personalDataConsent->link($commentId);
             }
         }
 
         // У сесію — не більше, ніж поле форми прийме назад.
         $data['name'] = mb_substr($data['name'], 0, self::NAME_MAX);
         $data['text'] = mb_substr($data['text'], 0, self::TEXT_MAX);
-        $this->storeFlash($error === null ? ['saved' => $itemId] : ['error' => $error, 'item_id' => $itemId, 'data' => $data]);
-        $this->response->redirectTo(Router::generateUrl('Sviat_ReviewRequests_form', [], true), 303);
+        return $error === null ? ['saved' => $itemId] : ['error' => $error, 'item_id' => $itemId, 'data' => $data];
     }
 
     private function validate(?object $item, array $data): ?string

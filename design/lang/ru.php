@@ -16,6 +16,7 @@ $lang['sviat__review_requests__error_name'] = 'Вкажіть ім\'я';
 $lang['sviat__review_requests__error_rating'] = 'Оберіть оцінку від 1 до 5';
 $lang['sviat__review_requests__error_text'] = 'Напишіть кілька слів про товар';
 $lang['sviat__review_requests__error_not_saved'] = 'Не вдалося зберегти відгук. Спробуйте ще раз.';
+$lang['sviat__review_requests__error_personal_data'] = 'Потрібна ваша згода';
 $lang['sviat__review_requests__verified'] = 'Перевірена покупка';
 $lang['sviat__review_requests__verified_hint'] = 'Автор купив цей товар у нашому магазині';
 $lang['sviat__review_requests__unsubscribe_title'] = 'Відмова від листів';

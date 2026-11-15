@@ -8,6 +8,7 @@ use Okay\Core\EntityFactory;
 use Okay\Core\FrontTranslations;
 use Okay\Core\Image;
 use Okay\Core\Languages;
+use Okay\Core\Modules\Modules;
 use Okay\Core\Notify;
 use Okay\Core\OkayContainer\Reference\ParameterReference as PR;
 use Okay\Core\OkayContainer\Reference\ServiceReference as SR;
@@ -23,6 +24,7 @@ use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestReviews;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestRules;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestSettings;
 use Okay\Modules\Sviat\ReviewRequests\Helpers\ReviewRequestVerifiedBackfill;
+use Okay\Modules\Sviat\ReviewRequests\Integration\PersonalDataConsent;
 use Psr\Log\LoggerInterface;
 
 return [
@@ -109,6 +111,12 @@ return [
         'arguments' => [
             new SR(ReviewRequestReviews::class),
             new SR(ReviewRequestSettings::class),
+        ],
+    ],
+    PersonalDataConsent::class => [
+        'class' => PersonalDataConsent::class,
+        'arguments' => [
+            new SR(Modules::class),
         ],
     ],
 ];
